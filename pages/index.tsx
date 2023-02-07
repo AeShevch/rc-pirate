@@ -3,13 +3,36 @@ import styles from "@/styles/Home.module.css";
 import { Card, Space, Alert, Form, Input, Button } from "antd";
 import { useState } from "react";
 
-export default function Home() {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+export type ParserFormFields = {
+  url: string;
+  containerSelector: string;
+};
 
-  const onSubmit = () => {
+export default function Home() {
+  const [form] = Form.useForm<ParserFormFields>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const getRichContent = async ({ url, containerSelector }: ParserFormFields) =>
+    await fetch(
+      `/api/parser?url=${url}&containerSelector=${containerSelector}`
+    );
+
+  const onSubmit = (formFields: ParserFormFields) => {
+    setErrorMessage(null);
     setIsLoading(true);
 
-    setTimeout(() => setIsLoading(false), 1000);
+    getRichContent(formFields)
+      .then((res) => {
+        console.log(res);
+
+        if (res.err) {
+          setErrorMessage(res.err);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   return (
@@ -22,7 +45,7 @@ export default function Home() {
       </Head>
       <main className={styles.main}>
         <Card title="🏴‍☠️ Попутный ветер!" style={{ width: "40rem" }}>
-          <Form onFinish={onSubmit} layout="vertical">
+          <Form form={form} onFinish={onSubmit} layout="vertical">
             <Space direction="vertical" size={40} style={{ width: "100%" }}>
               <Alert
                 message={
@@ -54,7 +77,7 @@ export default function Home() {
                   />
                 </Form.Item>
                 <Form.Item
-                  name="container-select"
+                  name="containerSelector"
                   hasFeedback
                   label="html-cелектор контейнера c контентом (На istyle.cz это обычно .block-static-block)"
                   initialValue=".block-static-block"
@@ -63,6 +86,8 @@ export default function Home() {
                   <Input disabled={isLoading} />
                 </Form.Item>
               </div>
+
+              {!!errorMessage && <Alert message={errorMessage} type="error" />}
 
               <Button type="primary" htmlType="submit" loading={isLoading}>
                 ⛵ Поднять паруса!
