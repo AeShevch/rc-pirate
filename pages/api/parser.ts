@@ -115,8 +115,8 @@ export default async function handler(
     }
 
     res.status(200).json({
-      previewUrl: `${publicResultUrl}/html/index.html`,
-      downloadUrl: `${publicResultUrl}/html.zip`,
+      previewUrl: `/api/public${publicResultUrl}/html/index.html`,
+      downloadUrl: `/api/public${publicResultUrl}/html.zip`,
       err: null,
     });
   } else {
