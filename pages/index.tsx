@@ -86,9 +86,10 @@ export default function Home() {
               return;
             }
 
-            setParserResult(res);
-
-            setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
+            setTimeout(() => {
+              setParserResult(res);
+              setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
+            }, 20000);
           })
           .finally(() => {
             setIsLoading(false);

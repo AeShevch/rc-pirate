@@ -27,17 +27,19 @@ export const sendFileToCloud = ({
   localFilePath,
   resultFolder = ``,
   callback = (err) => console.log(err),
-}: SendFileToCloudParams): void => {
-  const fileName = localFilePath.split(`/`).at(-1);
+}: SendFileToCloudParams): Promise<void> => {
+  return new Promise((resolve) => {
+    const fileName = localFilePath.split(`/`).at(-1);
 
-  console.log(`from`, localFilePath);
-  console.log(`to`, `rc-pirate${resultFolder}/${fileName}`);
-
-  minioClient.fPutObject(
-    BUCKET_NAME,
-    `rc-pirate${resultFolder}/${fileName}`,
-    localFilePath,
-    {},
-    callback
-  );
+    minioClient.fPutObject(
+      BUCKET_NAME,
+      `rc-pirate${resultFolder}/${fileName}`,
+      localFilePath,
+      {},
+      (err: Error | null, result: Minio.UploadedObjectInfo) => {
+        callback(err, result);
+        resolve();
+      }
+    );
+  });
 };
