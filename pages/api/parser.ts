@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { ParserFormFields } from "@/pages";
 import { zipDirectory } from "@/utils/zipDirectory";
 import axios from "axios";
-import cheerio  from "cheerio";
+import cheerio from "cheerio";
 import fs from "fs";
 import { downloadImage } from "@/utils/downloadImage";
 
