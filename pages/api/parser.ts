@@ -7,11 +7,9 @@ import cheerio from "cheerio";
 import fs from "fs";
 import path from "path";
 import { downloadImage } from "@/utils/downloadImage";
-import { uploadFolderToCloud } from "@/utils/uploadFolderToCloud";
 
 export type ParserResponsePayload = {
-  previewUrl: string | null;
-  downloadUrl: string | null;
+  timestamp: string | null;
   err: string | null;
 };
 
@@ -21,7 +19,7 @@ export default async function handler(
 ): Promise<void> {
   return new Promise(async (resolve) => {
     const { url, containerSelector } = req.query as ParserFormFields;
-    const timestamp = Date.now();
+    const timestamp = Date.now().toString();
     const resultHTMLDir = path.join(`/tmp`, `/results/${timestamp}`, `html`);
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
@@ -34,9 +32,8 @@ export default async function handler(
     } catch (err) {
       console.log(err);
 
-      res.status(500).json({
-        previewUrl: null,
-        downloadUrl: null,
+      res.status(200).json({
+        timestamp: null,
         err: `Карамба! Что-то пошло не так - не удаётся загрузить страницу ${url}!`,
       });
 
@@ -112,6 +109,7 @@ export default async function handler(
 
           await downloadImage(src, path.join(resultImagesDir, imageName));
         }
+
         $(containerSelector).prepend(`<meta charset="UTF-8">`);
         const richContent = $(containerSelector).html();
 
@@ -120,19 +118,14 @@ export default async function handler(
 
           await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
 
-          await uploadFolderToCloud(path.join(`/tmp`, `results`), () => {
-            res.status(200).json({
-              previewUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html/index.html`,
-              downloadUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html.zip`,
-              err: null,
-            });
-            resolve();
+          res.status(200).json({
+            timestamp,
+            err: null,
           });
         }
       } else {
-        res.status(404).json({
-          previewUrl: null,
-          downloadUrl: null,
+        res.status(200).json({
+          timestamp: null,
           err: `Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
         });
         resolve();

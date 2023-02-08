@@ -2,8 +2,12 @@ import Head from "next/head";
 import styles from "@/styles/Home.module.css";
 import { Card, Space, Alert, Form, Input, Button } from "antd";
 import { useState } from "react";
-import { ParserResponsePayload } from "@/pages/api/parser";
 import axios from "axios";
+import {
+  CloudRequestPayload,
+  CloudResponsePayload,
+} from "@/pages/api/uploadToCloud";
+import { ParserResponsePayload } from "@/pages/api/parser";
 
 export type ParserFormFields = {
   url: string;
@@ -15,8 +19,28 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [parserResult, setParserResult] =
-    useState<ParserResponsePayload | null>(null);
+  const [parserResult, setParserResult] = useState<CloudResponsePayload | null>(
+    null
+  );
+
+  const uploadParseResultToCloud = async ({
+    timestamp,
+  }: CloudRequestPayload): Promise<CloudResponsePayload | void> => {
+    try {
+      const { data } = await axios.get<CloudResponsePayload>(
+        `/api/uploadToCloud?timestamp=${timestamp}`
+      );
+
+      return data;
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setErrorMessage(err.message);
+      } else {
+        console.log("unexpected err: ", err);
+        setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
+      }
+    }
+  };
 
   const getRichContent = async ({
     url,
@@ -44,24 +68,33 @@ export default function Home() {
     setParserResult(null);
     setIsLoading(true);
 
-    getRichContent(formFields)
-      .then((res) => {
-        if (!res) return;
+    getRichContent(formFields).then((res) => {
+      if (!res) return;
 
-        if (res.err) {
-          setErrorMessage(res.err);
-          return;
-        }
+      if (res.err) {
+        setErrorMessage(res.err);
+        return;
+      }
 
-        setParserResult(res);
+      if (res && res.timestamp) {
+        uploadParseResultToCloud({ timestamp: res.timestamp })
+          .then((res) => {
+            if (!res) return;
 
-        setSuccessMessage(
-          `🦜 Попутный ветер! Абордаж прошёл успешно! Что делаем с пленником?`
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+            if (res.err) {
+              setErrorMessage(res.err);
+              return;
+            }
+
+            setParserResult(res);
+
+            setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
+          })
+          .finally(() => {
+            setIsLoading(false);
+          });
+      }
+    });
   };
 
   return (
@@ -122,7 +155,7 @@ export default function Home() {
               {!!errorMessage && <Alert message={errorMessage} type="error" />}
 
               <Button type="primary" htmlType="submit" loading={isLoading}>
-                  {isLoading ? `Процесс небыстрый...` : `⛵ Поднять паруса!`}
+                {isLoading ? `Процесс небыстрый...` : `⛵ Поднять паруса!`}
               </Button>
 
               {(successMessage || parserResult) && (
