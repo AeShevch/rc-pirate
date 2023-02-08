@@ -78,7 +78,7 @@ export default function Home() {
           style={{ width: "40rem" }}
         >
           <Form form={form} onFinish={onSubmit} layout="vertical">
-            <Space direction="vertical" size={40} style={{ width: "100%" }}>
+            <Space direction="vertical" size={20} style={{ width: "100%" }}>
               <Alert
                 message={
                   <>
@@ -122,43 +122,45 @@ export default function Home() {
               {!!errorMessage && <Alert message={errorMessage} type="error" />}
 
               <Button type="primary" htmlType="submit" loading={isLoading}>
-                ⛵ Поднять паруса!
+                  {isLoading ? `Процесс небыстрый...` : `⛵ Поднять паруса!`}
               </Button>
 
-              <Space direction="vertical">
-                {!!successMessage && (
-                  <Alert message={successMessage} type="success" />
-                )}
+              {(successMessage || parserResult) && (
+                <Space direction="vertical">
+                  {!!successMessage && (
+                    <Alert message={successMessage} type="success" />
+                  )}
 
-                {!!parserResult && (
-                  <>
-                    {parserResult.previewUrl && (
-                      <a
-                        rel="noreferrer"
-                        href={parserResult.previewUrl}
-                        target="_blank"
-                        style={{ color: `#1677ff` }}
-                      >
-                        Посмотреть превью (в новой вкладке)
-                      </a>
-                    )}
-                    {parserResult.downloadUrl && (
-                      <a
-                        rel="noreferrer"
-                        href={parserResult.downloadUrl}
-                        style={{
-                          color: `#1677ff`,
-                          borderBottom: `1px dashed currentColor`,
-                        }}
-                        download
-                        target="_blank"
-                      >
-                        Скачать архив
-                      </a>
-                    )}
-                  </>
-                )}
-              </Space>
+                  {!!parserResult && (
+                    <>
+                      {parserResult.previewUrl && (
+                        <a
+                          rel="noreferrer"
+                          href={parserResult.previewUrl}
+                          target="_blank"
+                          style={{ color: `#1677ff` }}
+                        >
+                          Посмотреть превью (в новой вкладке)
+                        </a>
+                      )}
+                      {parserResult.downloadUrl && (
+                        <a
+                          rel="noreferrer"
+                          href={parserResult.downloadUrl}
+                          style={{
+                            color: `#1677ff`,
+                            borderBottom: `1px dashed currentColor`,
+                          }}
+                          download
+                          target="_blank"
+                        >
+                          Скачать архив
+                        </a>
+                      )}
+                    </>
+                  )}
+                </Space>
+              )}
             </Space>
           </Form>
         </Card>
