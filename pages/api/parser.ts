@@ -42,9 +42,9 @@ export default async function handler(
 
   let $ = cheerio.load(html);
 
-  fs.rm(`${process.env.PWD}/public/results`, { recursive: true }, (err) => {
-    console.log(`Could not delete the results folder`, err);
-  });
+  // fs.rm(`${process.env.PWD}/public/results`, { recursive: true }, (err) => {
+  //   console.log(`Could not delete the results folder`, err);
+  // });
 
   if ($(containerSelector).length) {
     try {
@@ -96,11 +96,10 @@ export default async function handler(
 
       try {
         fs.mkdirSync(resultImagesDir, { recursive: true });
+        await downloadImage(src, `${resultImagesDir}${imageName}`);
       } catch (e) {
         console.log("Cannot create folder ", e);
       }
-
-      await downloadImage(src, `${resultImagesDir}${imageName}`);
     }
 
     const richContent = $(containerSelector).html();

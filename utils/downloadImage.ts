@@ -17,7 +17,6 @@ export const downloadImage = async (
     });
 
     await response.data.pipe(fs.createWriteStream(path));
-    return;
   } catch (err) {
     console.log(err);
   }
