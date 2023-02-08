@@ -134,6 +134,7 @@ export default function Home() {
                   <>
                     {parserResult.previewUrl && (
                       <a
+                        rel="noreferrer"
                         href={parserResult.previewUrl}
                         target="_blank"
                         style={{ color: `#1677ff` }}
@@ -143,6 +144,7 @@ export default function Home() {
                     )}
                     {parserResult.downloadUrl && (
                       <a
+                        rel="noreferrer"
                         href={parserResult.downloadUrl}
                         style={{
                           color: `#1677ff`,
