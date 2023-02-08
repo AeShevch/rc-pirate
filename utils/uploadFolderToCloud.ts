@@ -2,12 +2,9 @@ import walk from "walk";
 import { sendFileToCloud } from "@/utils/sendFileToCloud";
 import * as path from "path";
 
-const PROMISES_QUERY_SIZE = 10;
+const PROMISES_QUERY_SIZE = 5;
 
-export const uploadFolderToCloud = (
-  localFolderDir: string,
-  callback: () => void
-): Promise<void> => {
+export const uploadFolderToCloud = (localFolderDir: string): Promise<void> => {
   return new Promise((resolve) => {
     const walker = walk.walk(localFolderDir);
     const promisesQues: Promise<any>[][] = [];
@@ -16,8 +13,6 @@ export const uploadFolderToCloud = (
     walker.on("file", (root, fileStats, next) => {
       const localFilePath = path.join(root, fileStats.name);
       const promisesIndex = Math.floor(index / PROMISES_QUERY_SIZE);
-
-      console.log(promisesIndex);
 
       if (!promisesQues[promisesIndex]) {
         promisesQues[promisesIndex] = [];
@@ -37,17 +32,19 @@ export const uploadFolderToCloud = (
       next();
     });
 
-    walker.on("end", function () {
-      console.log(promisesQues);
-      promisesQues.forEach(async (promises, i) => {
-        await Promise.allSettled(promisesQues);
+    let resolvedQues = 0;
 
-        if (i === promisesQues.length - 1) {
-          callback();
-          console.log("End upload");
-          resolve();
-        }
-      });
+    walker.on("end", function () {
+      promisesQues.forEach(
+        async (promises, i) =>
+          await Promise.all(promises).finally(() => {
+            resolvedQues++;
+            if (resolvedQues === promisesQues.length) {
+              console.log("End upload");
+              resolve();
+            }
+          })
+      );
     });
   });
 };

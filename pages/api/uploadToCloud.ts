@@ -17,14 +17,13 @@ export default async function handler(
   res: NextApiResponse<CloudResponsePayload>
 ): Promise<void> {
   const { timestamp } = req.query as CloudRequestPayload;
-  return new Promise(async (resolve) => {
-    await uploadFolderToCloud(path.join(`/tmp`, `results`), () => {
-      res.status(200).json({
-        previewUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html/index.html`,
-        downloadUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html.zip`,
-        err: null,
-      });
-      resolve();
+  return new Promise(async () => {
+    await uploadFolderToCloud(path.join(`/tmp`, `results`));
+
+    res.status(200).json({
+      previewUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html/index.html`,
+      downloadUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html.zip`,
+      err: null,
     });
   });
 }

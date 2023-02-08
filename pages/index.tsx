@@ -91,7 +91,7 @@ export default function Home() {
             setParserResult(res);
             setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
             setIsLoading(false);
-          }, 20000);
+          }, 10000);
         });
       }
     });
