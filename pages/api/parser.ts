@@ -110,7 +110,8 @@ export default async function handler(
           await downloadImage(src, path.join(resultImagesDir, imageName));
         }
 
-        $(containerSelector).prepend(`<meta charset="UTF-8">`);
+        $(containerSelector)
+          .prepend(`<meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="UTF-8">`);
         const richContent = $(containerSelector).html();
 
         if (richContent) {

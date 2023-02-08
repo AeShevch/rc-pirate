@@ -22,6 +22,7 @@ export default function Home() {
   const [parserResult, setParserResult] = useState<CloudResponsePayload | null>(
     null
   );
+  const [loadingButtonText, setLoadingButtonText] = useState<string>(``);
 
   const uploadParseResultToCloud = async ({
     timestamp,
@@ -69,6 +70,7 @@ export default function Home() {
     setSuccessMessage(null);
     setParserResult(null);
     setIsLoading(true);
+    setLoadingButtonText(`Паршу вёрстку и изображения...`);
 
     getRichContent(formFields).then((res) => {
       if (!res) return;
@@ -79,6 +81,7 @@ export default function Home() {
       }
 
       if (res && res.timestamp) {
+        setLoadingButtonText(`Загружаю на CDN...`);
         uploadParseResultToCloud({ timestamp: res.timestamp }).then((res) => {
           if (!res) return;
 
@@ -91,6 +94,7 @@ export default function Home() {
             setParserResult(res);
             setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
             setIsLoading(false);
+            setLoadingButtonText(``);
           }, 10000);
         });
       }
@@ -155,7 +159,8 @@ export default function Home() {
               {!!errorMessage && <Alert message={errorMessage} type="error" />}
 
               <Button type="primary" htmlType="submit" loading={isLoading}>
-                {isLoading ? `Процесс небыстрый...` : `⛵ Поднять паруса!`}
+                {!isLoading && `⛵ Поднять паруса!`}
+                {isLoading && loadingButtonText}
               </Button>
 
               {(successMessage || parserResult) && (
