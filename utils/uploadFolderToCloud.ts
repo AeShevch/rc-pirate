@@ -1,5 +1,6 @@
 import walk from "walk";
 import { sendFileToCloud } from "@/utils/sendFileToCloud";
+import * as path from "path";
 
 export const uploadFolderToCloud = (
   localFolderDir: string,
@@ -9,7 +10,7 @@ export const uploadFolderToCloud = (
         const walker = walk.walk(localFolderDir);
 
         walker.on("file", (root, fileStats, next) => {
-            const localFilePath = root + "/" + fileStats.name;
+            const localFilePath = path.join(root, fileStats.name);
 
             sendFileToCloud({
                 localFilePath,

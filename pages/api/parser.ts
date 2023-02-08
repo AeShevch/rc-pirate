@@ -5,6 +5,7 @@ import { zipDirectory } from "@/utils/zipDirectory";
 import axios from "axios";
 import cheerio from "cheerio";
 import fs from "fs";
+import path from "path";
 import { downloadImage } from "@/utils/downloadImage";
 import { uploadFolderToCloud } from "@/utils/uploadFolderToCloud";
 
@@ -18,13 +19,18 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ParserResponsePayload>
 ): Promise<void> {
-  return new Promise(async (resove) => {
+  return new Promise(async (resolve) => {
     const { url, containerSelector } = req.query as ParserFormFields;
     const timestamp = Date.now();
     const publicResultUrl = `/results/${timestamp}`;
-    const resultHTMLDir = `${process.env.PWD}/upload${publicResultUrl}/html`;
+    const resultHTMLDir = path.join(
+      process.cwd(),
+      `public`,
+      publicResultUrl,
+      `html`
+    );
     const indexHtmlFileName = `index.html`;
-    const fullIndexHtmlPath = `${resultHTMLDir}/${indexHtmlFileName}`;
+    const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
     const imagesToDownload = new Set<string>();
     let html = null;
 
@@ -40,7 +46,7 @@ export default async function handler(
         err: `Карамба! Что-то пошло не так - не удаётся загрузить страницу ${url}!`,
       });
 
-      resove();
+      resolve();
       return;
     }
 
@@ -49,7 +55,7 @@ export default async function handler(
     });
 
     fs.rm(
-      `${process.env.PWD}/upload/results`,
+      `${process.env.PWD}/public/results`,
       { recursive: true },
       async (err) => {
         if (err) {
@@ -102,12 +108,12 @@ export default async function handler(
           });
 
           for (const src of Array.from(imagesToDownload)) {
-            const imageName = src.split(`/`).at(-1)?.split("?")[0];
-            const resultImagesDir = `${resultHTMLDir}/images/`;
+            const imageName = src.split(`/`).at(-1)?.split("?")[0] as string;
+            const resultImagesDir = path.join(resultHTMLDir, `images`);
 
             try {
               fs.mkdirSync(resultImagesDir, { recursive: true });
-              await downloadImage(src, `${resultImagesDir}${imageName}`);
+              await downloadImage(src, path.join(resultImagesDir, imageName));
             } catch (e) {
               console.log("Cannot create folder ", e);
             }
@@ -118,19 +124,18 @@ export default async function handler(
 
           if (richContent) {
             fs.writeFileSync(fullIndexHtmlPath, richContent);
-            console.log(`fs.writeFile ok`);
 
             await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
 
             await uploadFolderToCloud(
-              `${process.env.PWD}/upload/results`,
+              path.join(process.cwd(), `public`, `results`),
               () => {
                 res.status(200).json({
                   previewUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html/index.html`,
                   downloadUrl: `https://cdn.iport.ru/rc-pirate/${timestamp}/html.zip`,
                   err: null,
                 });
-                resove();
+                resolve();
               }
             );
           }
@@ -140,7 +145,7 @@ export default async function handler(
             downloadUrl: null,
             err: `Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
           });
-          resove();
+          resolve();
         }
       }
     );
