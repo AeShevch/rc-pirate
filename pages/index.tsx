@@ -39,6 +39,7 @@ export default function Home() {
         console.log("unexpected err: ", err);
         setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
       }
+      setIsLoading(false);
     }
   };
 
@@ -59,6 +60,7 @@ export default function Home() {
         console.log("unexpected err: ", err);
         setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
       }
+      setIsLoading(false);
     }
   };
 
@@ -77,23 +79,20 @@ export default function Home() {
       }
 
       if (res && res.timestamp) {
-        uploadParseResultToCloud({ timestamp: res.timestamp })
-          .then((res) => {
-            if (!res) return;
+        uploadParseResultToCloud({ timestamp: res.timestamp }).then((res) => {
+          if (!res) return;
 
-            if (res.err) {
-              setErrorMessage(res.err);
-              return;
-            }
+          if (res.err) {
+            setErrorMessage(res.err);
+            return;
+          }
 
-            setTimeout(() => {
-              setParserResult(res);
-              setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
-            }, 20000);
-          })
-          .finally(() => {
+          setTimeout(() => {
+            setParserResult(res);
+            setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
             setIsLoading(false);
-          });
+          }, 20000);
+        });
       }
     });
   };
