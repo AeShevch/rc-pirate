@@ -48,6 +48,8 @@ export default async function handler(
       decodeEntities: false,
     });
 
+    fs.mkdirSync(`/tmp/results`, { recursive: true });
+
     fs.rm(`/tmp/results`, { recursive: true }, async (err) => {
       if (err) {
         console.log(`Could not delete the results folder`, err);
