@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { ParserFormFields } from "@/pages";
 import { zipDirectory } from "@/utils/zipDirectory";
 import axios from "axios";
-import cheerio from "cheerio";
+import cheerio  from "cheerio";
 import fs from "fs";
 import { downloadImage } from "@/utils/downloadImage";
 
@@ -23,13 +23,28 @@ export default async function handler(
   const indexHtmlFileName = `index.html`;
   const fullIndexHtmlPath = `${resultDir}/${indexHtmlFileName}`;
   const imagesToDownload = new Set<string>();
+  let html = null;
 
-  const { data } = await axios.get(url);
-  const $ = cheerio.load(data);
+  try {
+    const { data } = await axios.get(url);
+    html = data;
+  } catch (err) {
+    console.log(err);
 
-  fs.rm(`${process.env.PWD}/public/results`, { recursive: true }, (err) =>
-    console.log(err)
-  );
+    res.status(500).json({
+      previewUrl: null,
+      downloadUrl: null,
+      err: `Карамба! Что-то пошло не так - удаётся загрузить страницу ${url}!`,
+    });
+
+    return;
+  }
+
+  let $ = cheerio.load(html);
+
+  fs.rm(`${process.env.PWD}/public/results`, { recursive: true }, (err) => {
+    console.log(`Could not delete the results folder`, err);
+  });
 
   if ($(containerSelector).length) {
     try {
