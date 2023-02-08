@@ -1,32 +1,39 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ParserFormFields } from "@/pages";
+import { zipDirectory } from "@/utils/zipDirectory";
 import axios from "axios";
 import cheerio from "cheerio";
 import fs from "fs";
+import { downloadImage } from "@/utils/downloadImage";
 
-type Data = {
-  url: string | null;
+export type ParserResponsePayload = {
+  previewUrl: string | null;
+  downloadUrl: string | null;
   err: string | null;
 };
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Data>
+  res: NextApiResponse<ParserResponsePayload>
 ) {
   const { url, containerSelector } = req.query as ParserFormFields;
-  const publicFileUrl = `/results/${Date.now()}/html/`;
-  const newFilePath = `${process.env.PWD}/public${publicFileUrl}`;
-  const newFileName = `index.html`;
-  const fullPath = newFilePath + newFileName;
+  const publicResultUrl = `/results/${Date.now()}`;
+  const resultDir = `${process.env.PWD}/public${publicResultUrl}/html`;
+  const indexHtmlFileName = `index.html`;
+  const fullIndexHtmlPath = `${resultDir}/${indexHtmlFileName}`;
   const imagesToDownload = new Set<string>();
 
   const { data } = await axios.get(url);
   const $ = cheerio.load(data);
 
+  fs.rm(`${process.env.PWD}/public/results`, { recursive: true }, (err) =>
+    console.log(err)
+  );
+
   if ($(containerSelector).length) {
     try {
-      fs.mkdirSync(newFilePath, { recursive: true });
+      fs.mkdirSync(resultDir, { recursive: true });
     } catch (e) {
       console.log("Cannot create folder ", e);
     }
@@ -68,43 +75,40 @@ export default async function handler(
       }
     });
 
-    Array.from(imagesToDownload).forEach((src) => {
-      const fileName = src.split(`/`).at(-1)?.split('?')[0];
-      const resultDir = `${newFilePath}images/`;
+    for (const src of Array.from(imagesToDownload)) {
+      const imageName = src.split(`/`).at(-1)?.split("?")[0];
+      const resultImagesDir = `${resultDir}/images/`;
 
       try {
-        fs.mkdirSync(resultDir, { recursive: true });
+        fs.mkdirSync(resultImagesDir, { recursive: true });
       } catch (e) {
         console.log("Cannot create folder ", e);
       }
 
-      axios({
-        method: "GET",
-        url: src,
-        responseType: "stream",
-      }).then((res) => {
-        res.data.pipe(fs.createWriteStream(`${resultDir}${fileName}`));
-        res.data.on("end", () => {
-          console.log("download complete");
-        });
-      });
-    });
+      await downloadImage(src, `${resultImagesDir}${imageName}`);
+    }
 
     const richContent = $(containerSelector).html();
 
     if (richContent) {
-      fs.writeFile(fullPath, richContent, (err) => {
+      fs.writeFile(fullIndexHtmlPath, richContent, (err) => {
         if (err) {
           return console.log(err);
         }
-        console.log("The file was saved!");
+        console.log("The index.html file was saved!");
+        zipDirectory(resultDir, `${resultDir}.zip`);
       });
     }
 
-    res.status(200).json({ url: fullPath, err: null });
+    res.status(200).json({
+      previewUrl: `${publicResultUrl}/html/index.html`,
+      downloadUrl: `${publicResultUrl}/html.zip`,
+      err: null,
+    });
   } else {
     res.status(404).json({
-      url: null,
+      previewUrl: null,
+      downloadUrl: null,
       err: `Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
     });
   }
