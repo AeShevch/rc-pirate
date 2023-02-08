@@ -1,11 +1,11 @@
 {
   "name": "rc-pirate",
-  "version": "0.1.0",
+  "version": "0.9.0-beta",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production node server.js",
     "lint": "next lint"
   },
   "dependencies": {
@@ -20,6 +20,7 @@
     "cheerio": "^1.0.0-rc.12",
     "eslint": "8.33.0",
     "eslint-config-next": "13.1.6",
+    "express": "^4.18.2",
     "next": "13.1.6",
     "prettier": "^2.8.3",
     "pretty": "^2.0.0",

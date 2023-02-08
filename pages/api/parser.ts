@@ -19,7 +19,7 @@ export default async function handler(
 ) {
   const { url, containerSelector } = req.query as ParserFormFields;
   const publicResultUrl = `/results/${Date.now()}`;
-  const resultDir = `${process.env.PWD}/public${publicResultUrl}/html`;
+  const resultDir = `${process.env.PWD}/upload${publicResultUrl}/html`;
   const indexHtmlFileName = `index.html`;
   const fullIndexHtmlPath = `${resultDir}/${indexHtmlFileName}`;
   const imagesToDownload = new Set<string>();
@@ -115,8 +115,8 @@ export default async function handler(
     }
 
     res.status(200).json({
-      previewUrl: `/api/public${publicResultUrl}/html/index.html`,
-      downloadUrl: `/api/public${publicResultUrl}/html.zip`,
+      previewUrl: `/upload/${publicResultUrl}/html/index.html`,
+      downloadUrl: `/upload/${publicResultUrl}/html.zip`,
       err: null,
     });
   } else {
