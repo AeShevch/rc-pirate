@@ -9,8 +9,8 @@ import path from "path";
 import { downloadImage } from "@/utils/downloadImage";
 
 export type ParserResponsePayload = {
-  timestamp: string | null;
-  err: string | null;
+  timestamp: Nullable<string>;
+  err: Nullable<string>;
 };
 
 export default async function handler(

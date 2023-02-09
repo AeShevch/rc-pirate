@@ -1,3 +1,5 @@
+import {FileToCDNUpload} from "@/utils/getFilesUploadQueues";
+
 const _minio = require("minio");
 import Minio from "minio";
 
@@ -10,9 +12,7 @@ export const minioClient = new _minio.Client({
   secretKey: "BdQ000JbfvwzHGJWyqdmn-dlGDxofWnVIYR8a03g",
 });
 
-type SendFileToCloudParams = {
-  localFilePath: string;
-  resultFolder?: string;
+type SendFileToCloudParams = FileToCDNUpload & {
   callback?: Minio.ResultCallback<Minio.UploadedObjectInfo>;
 };
 

@@ -3,11 +3,10 @@ import styles from "@/styles/Home.module.css";
 import { Card, Space, Alert, Form, Input, Button } from "antd";
 import { useState } from "react";
 import axios from "axios";
-import {
-  CloudRequestPayload,
-  CloudResponsePayload,
-} from "@/pages/api/uploadToCloud";
-import { ParserResponsePayload } from "@/pages/api/parser";
+import { FilesUploadQueuesResponsePayload } from "@/pages/api/parser/files/getUploadQueues";
+import { ParserResponsePayload } from "@/pages/api/parser/parse";
+import { Nullable } from "@/utils/types";
+import { FileToCDNUpload } from "@/utils/getFilesUploadQueues";
 
 export type ParserFormFields = {
   url: string;
@@ -17,40 +16,39 @@ export type ParserFormFields = {
 export default function Home() {
   const [form] = Form.useForm<ParserFormFields>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [parserResult, setParserResult] = useState<CloudResponsePayload | null>(
-    null
-  );
+  const [isEnd, setIsEnd] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<Nullable<string>>(null);
+  const [successMessage, setSuccessMessage] = useState<Nullable<string>>(null);
   const [loadingButtonText, setLoadingButtonText] = useState<string>(``);
+  const [resultFolderTimestamp, setResultFolderTimestamp] =
+    useState<Nullable<string>>(null);
 
-  const uploadParseResultToCloud = async ({
-    timestamp,
-  }: CloudRequestPayload): Promise<CloudResponsePayload | void> => {
-    try {
-      const { data } = await axios.get<CloudResponsePayload>(
-        `/api/uploadToCloud?timestamp=${timestamp}`
-      );
+  const fetchFilesUploadQueues =
+    async (): Promise<FilesUploadQueuesResponsePayload | void> => {
+      try {
+        const { data } = await axios.get<FilesUploadQueuesResponsePayload>(
+          `/api/parser/files/getUploadQueues`
+        );
 
-      return data;
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setErrorMessage(err.message);
-      } else {
-        console.log("unexpected err: ", err);
-        setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
+        return data;
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setErrorMessage(err.message);
+        } else {
+          console.log("unexpected err: ", err);
+          setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
+        }
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    }
-  };
+    };
 
-  const getRichContent = async ({
+  const fetchParseRichContent = async ({
     url,
     containerSelector,
   }: ParserFormFields): Promise<ParserResponsePayload | void> => {
     try {
       const { data } = await axios.get<ParserResponsePayload>(
-        `/api/parser?url=${url}&containerSelector=${containerSelector}`
+        `/api/parser/parse?url=${url}&containerSelector=${containerSelector}`
       );
 
       return data;
@@ -65,14 +63,46 @@ export default function Home() {
     }
   };
 
-  const onSubmit = (formFields: ParserFormFields) => {
+  const fetchUploadParsedFilesToCDN = async (
+    filesToUpload: FileToCDNUpload[]
+  ): Promise<void> => {
+    try {
+      await axios.get<void>(
+        `/api/parser/files/cdnUpload?files=${JSON.stringify(filesToUpload)}`
+      );
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setErrorMessage(err.message);
+      } else {
+        console.log("unexpected err: ", err);
+        setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
+      }
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmit = async (formFields: ParserFormFields) => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    setParserResult(null);
+    setIsEnd(false);
     setIsLoading(true);
+    setResultFolderTimestamp(null);
     setLoadingButtonText(`Паршу вёрстку и изображения...`);
 
-    getRichContent(formFields).then((res) => {
+    const parserResponse = await fetchParseRichContent(formFields);
+    if (!parserResponse) return;
+
+    if (parserResponse.err) {
+      setErrorMessage(parserResponse.err);
+      return;
+    }
+
+    if (parserResponse && parserResponse.timestamp) {
+      setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
+      setResultFolderTimestamp(parserResponse.timestamp);
+
+      const res = await fetchFilesUploadQueues();
+
       if (!res) return;
 
       if (res.err) {
@@ -80,25 +110,19 @@ export default function Home() {
         return;
       }
 
-      if (res && res.timestamp) {
-        setLoadingButtonText(`Загружаю на CDN...`);
-        uploadParseResultToCloud({ timestamp: res.timestamp }).then((res) => {
-          if (!res) return;
+      setLoadingButtonText(`Загружаю файлы на CDN...`);
 
-          if (res.err) {
-            setErrorMessage(res.err);
-            return;
-          }
-
-          setTimeout(() => {
-            setParserResult(res);
-            setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
-            setIsLoading(false);
-            setLoadingButtonText(``);
-          }, 10000);
-        });
+      for await (const filesToUpload of res.filesUploadQueues) {
+        await fetchUploadParsedFilesToCDN(filesToUpload);
       }
-    });
+
+      setTimeout(() => {
+        setIsEnd(true);
+        setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
+        setIsLoading(false);
+        setLoadingButtonText(``);
+      }, 5000);
+    }
   };
 
   return (
@@ -163,38 +187,34 @@ export default function Home() {
                 {isLoading && loadingButtonText}
               </Button>
 
-              {(successMessage || parserResult) && (
+              {(successMessage || isEnd) && (
                 <Space direction="vertical">
                   {!!successMessage && (
                     <Alert message={successMessage} type="success" />
                   )}
 
-                  {!!parserResult && (
+                  {!!isEnd && (
                     <>
-                      {parserResult.previewUrl && (
-                        <a
-                          rel="noreferrer"
-                          href={parserResult.previewUrl}
-                          target="_blank"
-                          style={{ color: `#1677ff` }}
-                        >
-                          Посмотреть превью (в новой вкладке)
-                        </a>
-                      )}
-                      {parserResult.downloadUrl && (
-                        <a
-                          rel="noreferrer"
-                          href={parserResult.downloadUrl}
-                          style={{
-                            color: `#1677ff`,
-                            borderBottom: `1px dashed currentColor`,
-                          }}
-                          download
-                          target="_blank"
-                        >
-                          Скачать архив
-                        </a>
-                      )}
+                      <a
+                        rel="noreferrer"
+                        href={`https://cdn.iport.ru/rc-pirate/${resultFolderTimestamp}/html/index.html`}
+                        target="_blank"
+                        style={{ color: `#1677ff` }}
+                      >
+                        Посмотреть превью (в новой вкладке)
+                      </a>
+                      <a
+                        rel="noreferrer"
+                        href={`https://cdn.iport.ru/rc-pirate/${resultFolderTimestamp}/html.zip`}
+                        style={{
+                          color: `#1677ff`,
+                          borderBottom: `1px dashed currentColor`,
+                        }}
+                        download
+                        target="_blank"
+                      >
+                        Скачать архив
+                      </a>
                     </>
                   )}
                 </Space>
