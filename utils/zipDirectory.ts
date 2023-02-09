@@ -6,7 +6,10 @@ import fs from "fs";
  * @param {String} outPath: /path/to/created.zip
  * @returns {Promise}
  */
-export const zipDirectory = (sourceDir: string, outPath: string): Promise<void> => {
+export const zipDirectory = (
+  sourceDir: string,
+  outPath: string
+): Promise<void> => {
   const archive = archiver("zip", { zlib: { level: 9 } });
   const stream = fs.createWriteStream(outPath);
 
