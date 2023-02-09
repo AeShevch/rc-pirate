@@ -7,6 +7,7 @@ import cheerio from "cheerio";
 import fs from "fs";
 import path from "path";
 import { downloadImage } from "@/utils/downloadImage";
+import { Nullable } from "@/utils/types";
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
@@ -32,7 +33,7 @@ export default async function handler(
     } catch (err) {
       console.log(err);
 
-      res.status(200).json({
+      await res.status(200).json({
         timestamp: null,
         err: `Карамба! Что-то пошло не так - не удаётся загрузить страницу ${url}!`,
       });
@@ -110,8 +111,9 @@ export default async function handler(
           await downloadImage(src, path.join(resultImagesDir, imageName));
         }
 
-        $(containerSelector)
-          .prepend(`<meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="UTF-8">`);
+        $(containerSelector).prepend(
+          `<meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="UTF-8">`
+        );
         const richContent = $(containerSelector).html();
 
         if (richContent) {
@@ -119,13 +121,13 @@ export default async function handler(
 
           await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
 
-          res.status(200).json({
+          await res.status(200).json({
             timestamp,
             err: null,
           });
         }
       } else {
-        res.status(200).json({
+        await res.status(200).json({
           timestamp: null,
           err: `Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
         });

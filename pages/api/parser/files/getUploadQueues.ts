@@ -19,7 +19,7 @@ export default async function handler(
     path.join(`/tmp`, `results`)
   );
 
-  res.status(200).json({
+  await res.status(200).json({
     filesUploadQueues,
     err: null,
   });
