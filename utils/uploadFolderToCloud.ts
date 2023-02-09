@@ -2,7 +2,7 @@ import walk from "walk";
 import { sendFileToCloud } from "@/utils/sendFileToCloud";
 import * as path from "path";
 
-const PROMISES_QUERY_SIZE = 5;
+const PROMISES_QUERY_SIZE = 10;
 
 export const uploadFolderToCloud = (localFolderDir: string): Promise<void> => {
   return new Promise((resolve) => {
