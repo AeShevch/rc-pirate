@@ -136,7 +136,7 @@ export default function Home() {
       </Head>
       <main className={styles.main}>
         <Card
-          title="🏴‍☠️ Rich Content Pirate v0.9.0-beta"
+          title="🏴‍☠️ Rich Content Pirate v0.9.4-beta"
           style={{ width: "40rem" }}
         >
           <Form form={form} onFinish={onSubmit} layout="vertical">
