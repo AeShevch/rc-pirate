@@ -1,13 +1,13 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from "next";
-import { ParserFormFields } from "@/pages";
-import { zipDirectory } from "@/utils/zipDirectory";
-import axios from "axios";
-import cheerio from "cheerio";
 import fs from "fs";
 import path from "path";
+import puppeteer from "puppeteer";
+
+import { ParserFormFields } from "@/pages";
+import { zipDirectory } from "@/utils/zipDirectory";
 import { downloadImage } from "@/utils/downloadImage";
 import { Nullable } from "@/utils/types";
+import { getHtmlAndImagesFromPage } from "@/utils/getHtmlAndImagesFromPage";
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
@@ -24,27 +24,49 @@ export default async function handler(
     const resultHTMLDir = path.join(`/tmp`, `/results/${timestamp}`, `html`);
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
-    const imagesToDownload = new Set<string>();
-    let html = null;
+
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
     try {
-      const { data } = await axios.get(url);
-      html = data;
+      await page.goto(url, {timeout: 99999});
     } catch (err) {
       console.log(err);
 
       await res.status(200).json({
         timestamp: null,
-        err: `Карамба! Что-то пошло не так - не удаётся загрузить страницу ${url}!`,
+        err: `Карамба! Страница не найдена или слишком долго открывается.`,
       });
 
       resolve();
       return;
     }
 
-    let $ = cheerio.load(html, {
-      decodeEntities: false,
-    });
+    try {
+      await page.waitForSelector(containerSelector);
+    } catch (err) {
+      console.log(err);
+
+      await res.status(200).json({
+        timestamp: null,
+        err: `Возвращаемся! Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
+      });
+      resolve();
+      return;
+    }
+
+    const { richContentHtml, imagesToDownload } = await getHtmlAndImagesFromPage(page, containerSelector);
+
+    await browser.close();
+
+    if (!richContentHtml) {
+      await res.status(200).json({
+        timestamp: null,
+        err: `Якорь мне в код! Произошла ошибка при подготовке html, разраба на мостик!`,
+      });
+      resolve();
+      return;
+    }
 
     fs.mkdirSync(`/tmp/results`, { recursive: true });
 
@@ -53,86 +75,34 @@ export default async function handler(
         console.log(`Could not delete the results folder`, err);
       }
 
-      if ($(containerSelector).length) {
-        try {
-          fs.mkdirSync(resultHTMLDir, { recursive: true });
-        } catch (e) {
-          console.log("Cannot create folder ", e);
-        }
-
-        $(`${containerSelector} img`).each((_, elem) => {
-          const originalSrc = $(elem).attr(`src`);
-          const originalDataSrc = $(elem).attr(`data-src`);
-          const originalSrcSet = $(elem).attr(`srcset`);
-
-          if (originalSrc) {
-            const fileName = originalSrc.split(`/`).at(-1);
-            imagesToDownload.add(originalSrc);
-
-            $(elem).attr(`src`, `./images/${fileName}`);
-          }
-
-          if (originalDataSrc) {
-            const fileName = originalDataSrc.split(`/`).at(-1);
-            imagesToDownload.add(originalDataSrc);
-
-            $(elem).attr(`data-src`, `./images/${fileName}`);
-          }
-
-          if (originalSrcSet) {
-            const newSrcSet = originalSrcSet
-              .split(`,`)
-              .map((srcSetItem) => {
-                const [originalSrcFromSrcSet, sizeValue] =
-                  srcSetItem.split(` `);
-
-                const fileName = originalSrcFromSrcSet.split(`/`).at(-1);
-
-                imagesToDownload.add(originalSrcFromSrcSet);
-
-                return `./images/${fileName} ${sizeValue}`;
-              })
-              .join(`,`);
-
-            $(elem).attr(`srcset`, newSrcSet);
-          }
-        });
-
-        const resultImagesDir = path.join(resultHTMLDir, `images/`);
-        try {
-          fs.mkdirSync(resultImagesDir, { recursive: true });
-        } catch (e) {
-          console.log("Cannot create folder", e);
-        }
-
-        for (const src of Array.from(imagesToDownload)) {
-          const imageName = src.split(`/`).at(-1)?.split("?")[0] as string;
-
-          await downloadImage(src, path.join(resultImagesDir, imageName));
-        }
-
-        $(containerSelector).prepend(
-          `<meta name="viewport" content="width=device-width, initial-scale=1"><meta charset="UTF-8">`
-        );
-        const richContent = $(containerSelector).html();
-
-        if (richContent) {
-          fs.writeFileSync(fullIndexHtmlPath, richContent);
-
-          await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
-
-          await res.status(200).json({
-            timestamp,
-            err: null,
-          });
-        }
-      } else {
-        await res.status(200).json({
-          timestamp: null,
-          err: `Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
-        });
-        resolve();
+      try {
+        fs.mkdirSync(resultHTMLDir, { recursive: true });
+      } catch (e) {
+        console.log("Cannot create folder ", e);
       }
+
+      const resultImagesDir = path.join(resultHTMLDir, `images/`);
+      try {
+        fs.mkdirSync(resultImagesDir, { recursive: true });
+      } catch (e) {
+        console.log("Cannot create folder", e);
+      }
+
+      for (const src of Array.from(imagesToDownload)) {
+        const imageName = src.split(`/`).at(-1)?.split("?")[0] as string;
+
+        await downloadImage(src, path.join(resultImagesDir, imageName));
+      }
+
+      fs.writeFileSync(fullIndexHtmlPath, richContentHtml);
+
+      await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
+
+      await res.status(200).json({
+        timestamp,
+        err: null,
+      });
+      resolve();
     });
   });
 }
