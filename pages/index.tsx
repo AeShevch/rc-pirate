@@ -94,6 +94,7 @@ export default function Home() {
 
     if (parserResponse.err) {
       setErrorMessage(parserResponse.err);
+      setIsLoading(false);
       return;
     }
 

@@ -8,8 +8,8 @@ const BUCKET_NAME = "tf-bitrix-upload";
 export const minioClient = new _minio.Client({
   endPoint: "storage.yandexcloud.net",
   useSSL: true,
-  accessKey: "ymZ1feu4UIhIx2Vk6Q4a",
-  secretKey: "BdQ000JbfvwzHGJWyqdmn-dlGDxofWnVIYR8a03g",
+  accessKey: process.env.YANDEX_CLOUD_ACCESS_KEY,
+  secretKey: process.env.YANDEX_CLOUD_SECRET_KEY,
 });
 
 type SendFileToCloudParams = FileToCDNUpload & {
