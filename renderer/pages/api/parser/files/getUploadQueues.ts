@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import {
   FileToCDNUpload,
   getFilesUploadQueues,
-} from "@/utils/getFilesUploadQueues";
-import { Nullable } from "@/utils/types";
+} from "@/renderer/utils/getFilesUploadQueues";
+import { Nullable } from "@/renderer/utils/types";
 import path from "path";
 
 export type FilesUploadQueuesResponsePayload = {

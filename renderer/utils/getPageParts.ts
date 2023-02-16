@@ -1,6 +1,6 @@
-import { Nullable } from "@/utils/types";
+import { Nullable } from "@/renderer/utils/types";
 import { Page } from "puppeteer";
-import { getCssStringWithUpdatedUrls } from "@/utils/getCssStringWithUpdatedUrls";
+import { getCssStringWithUpdatedUrls } from "@/renderer/utils/getCssStringWithUpdatedUrls";
 
 type GetPageParts = (
   page: Page,

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { FileToCDNUpload } from "@/utils/getFilesUploadQueues";
-import { sendFileToCloud } from "@/utils/sendFileToCloud";
+import { FileToCDNUpload } from "@/renderer/utils/getFilesUploadQueues";
+import { sendFileToCloud } from "@/renderer/utils/sendFileToCloud";
 
 export default async function handler(
   req: NextApiRequest,

@@ -2,15 +2,25 @@
   "name": "rc-pirate",
   "version": "0.9.4-beta",
   "private": true,
+  "main": "app/background.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "nextron",
+    "build": "nextron build",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "electron-serve": "^1.1.0",
+    "electron-store": "^8.1.0",
+    "next": "^12.3.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "4.9.5"
+  },
+  "devDependencies": {
+    "electron": "^21.3.3",
+    "electron-builder": "^23.6.0",
+    "nextron": "^8.5.0",
     "@next/font": "13.1.6",
-    "@root/walk": "^1.1.0",
     "@types/archiver": "^5.3.1",
     "@types/minio": "^7.0.15",
     "@types/node": "18.13.0",
@@ -23,11 +33,8 @@
     "eslint": "8.33.0",
     "eslint-config-next": "13.1.6",
     "minio": "^7.0.32",
-    "next": "13.1.6",
     "prettier": "^2.8.3",
     "puppeteer": "^19.6.3",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
     "typescript": "4.9.5",
     "walk": "^2.3.15"
   }

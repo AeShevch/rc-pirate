@@ -3,12 +3,12 @@ import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 
-import { ParserFormFields } from "@/pages";
-import { zipDirectory } from "@/utils/zipDirectory";
-import { downloadFile } from "@/utils/downloadFile";
-import { Nullable } from "@/utils/types";
-import { getPageParts } from "@/utils/getPageParts";
-import { getCssStringWithUpdatedUrls } from "@/utils/getCssStringWithUpdatedUrls";
+import { ParserFormFields } from "@/renderer/pages";
+import { zipDirectory } from "@/renderer/utils/zipDirectory";
+import { downloadFile } from "@/renderer/utils/downloadFile";
+import { Nullable } from "@/renderer/utils/types";
+import { getPageParts } from "@/renderer/utils/getPageParts";
+import { getCssStringWithUpdatedUrls } from "@/renderer/utils/getCssStringWithUpdatedUrls";
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
@@ -26,7 +26,7 @@ export default async function handler(
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
 
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     try {
@@ -59,7 +59,7 @@ export default async function handler(
     const { richContentHtml, imagesToDownload, cssToDownload } =
       await getPageParts(page, containerSelector);
 
-    // await browser.close();
+    await browser.close();
 
     if (!richContentHtml) {
       await res.status(200).json({
