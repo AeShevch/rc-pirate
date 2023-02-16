@@ -1,19 +1,18 @@
 import axios from "axios";
-import https from "https";
 import fs from "fs";
 
-export const downloadImage = async (
-  url: string,
-  path: string
+export const downloadFile = async (
+  urlFrom: string,
+  pathTo: string
 ): Promise<void> => {
   try {
     const response = await axios({
       method: "GET",
-      url: url,
+      url: urlFrom,
       responseType: "stream",
     });
 
-    await response.data.pipe(fs.createWriteStream(path));
+    await response.data.pipe(fs.createWriteStream(pathTo));
   } catch (err) {
     console.log(err);
   }

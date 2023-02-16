@@ -5,9 +5,10 @@ import puppeteer from "puppeteer";
 
 import { ParserFormFields } from "@/pages";
 import { zipDirectory } from "@/utils/zipDirectory";
-import { downloadImage } from "@/utils/downloadImage";
+import { downloadFile } from "@/utils/downloadFile";
 import { Nullable } from "@/utils/types";
-import { getHtmlAndImagesFromPage } from "@/utils/getHtmlAndImagesFromPage";
+import { getPageParts } from "@/utils/getPageParts";
+import { getCssStringWithUpdatedUrls } from "@/utils/getCssStringWithUpdatedUrls";
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
@@ -25,17 +26,17 @@ export default async function handler(
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
 
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
     try {
-      await page.goto(url, {timeout: 99999});
+      await page.goto(url, { timeout: 99999 });
     } catch (err) {
       console.log(err);
 
       await res.status(200).json({
         timestamp: null,
-        err: `Карамба! Страница не найдена или слишком долго открывается.`,
+        err: `Карамба! Страница не найдена или слишком долго открывается. Убедитесь в корректности вводных или попробуйте попробовать ещё раз.`,
       });
 
       resolve();
@@ -55,14 +56,15 @@ export default async function handler(
       return;
     }
 
-    const { richContentHtml, imagesToDownload } = await getHtmlAndImagesFromPage(page, containerSelector);
+    const { richContentHtml, imagesToDownload, cssToDownload } =
+      await getPageParts(page, containerSelector);
 
-    await browser.close();
+    // await browser.close();
 
     if (!richContentHtml) {
       await res.status(200).json({
         timestamp: null,
-        err: `Якорь мне в код! Произошла ошибка при подготовке html, разраба на мостик!`,
+        err: `Якорь мне в код! Почему-то html пустой, разраба на мостик!`,
       });
       resolve();
       return;
@@ -88,10 +90,35 @@ export default async function handler(
         console.log("Cannot create folder", e);
       }
 
-      for (const src of Array.from(imagesToDownload)) {
+      for await (const cssHref of cssToDownload) {
+        try {
+          const fileName = cssHref.split(`/`).at(-1)?.split("?")[0] as string;
+          const response = await fetch(cssHref);
+
+          const cssString = await response.text();
+
+          if (!cssString) continue;
+
+          const updatedCssString = getCssStringWithUpdatedUrls(
+            cssString,
+            (src) => {
+              imagesToDownload.push(src);
+            }
+          );
+
+          fs.writeFileSync(
+            path.join(resultHTMLDir, fileName),
+            updatedCssString
+          );
+        } catch (err) {
+          console.log(err);
+        }
+      }
+
+      for await (const src of imagesToDownload) {
         const imageName = src.split(`/`).at(-1)?.split("?")[0] as string;
 
-        await downloadImage(src, path.join(resultImagesDir, imageName));
+        await downloadFile(src, path.join(resultImagesDir, imageName));
       }
 
       fs.writeFileSync(fullIndexHtmlPath, richContentHtml);
