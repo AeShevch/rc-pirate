@@ -1,4 +1,4 @@
-import { FileToCDNUpload } from "@/renderer/utils/getFilesUploadQueues";
+import { FileToCDNUpload } from "./getFilesUploadQueues";
 
 const _minio = require("minio");
 import Minio from "minio";

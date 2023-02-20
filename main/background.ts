@@ -2,8 +2,10 @@ import { app, ipcMain } from "electron";
 import serve from "electron-serve";
 import { createWindow } from "./helpers";
 import { IPCChannel } from "./const";
+import { ParserService } from "./services/ParserService";
 
 const isProd = process.env.NODE_ENV === "production";
+const parserService = new ParserService();
 
 if (isProd) {
   serve({ directory: "app" });
@@ -19,6 +21,13 @@ if (isProd) {
     height: 600,
   });
 
+  ipcMain.on(IPCChannel.Parse, async (event, userInput) => {
+    console.log(userInput);
+    const res = await parserService.parse(userInput);
+    console.log(`END  `, res);
+    return event.sender.send(IPCChannel.Parse, res);
+  });
+
   if (isProd) {
     await mainWindow.loadURL("app://./");
   } else {
@@ -30,11 +39,4 @@ if (isProd) {
 
 app.on("window-all-closed", () => {
   app.quit();
-});
-
-ipcMain.on(IPCChannel.Parse, (event, arg) => {
-  event.sender.send(
-    IPCChannel.Parse,
-    `[ipcMain] "${arg}" received asynchronously.`
-  );
 });

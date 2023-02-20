@@ -1,6 +1,6 @@
-import { Nullable } from "@/renderer/utils/types";
+import { Nullable } from "./types";
 import { Page } from "puppeteer";
-import { getCssStringWithUpdatedUrls } from "@/renderer/utils/getCssStringWithUpdatedUrls";
+import { getCssStringWithUpdatedUrls } from "./getCssStringWithUpdatedUrls";
 
 type GetPageParts = (
   page: Page,
@@ -18,7 +18,7 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
     getCssStringWithUpdatedUrls
   );
 
-  return await page.evaluate(async (containerSelector) => {
+  return await page.evaluate((containerSelector) => {
     const richContentElement = document.querySelector(containerSelector);
     const imagesToDownload = new Set<string>();
     const cssToDownload = new Set<string>();
@@ -32,15 +32,15 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
     richContentElement.insertAdjacentHTML(
       `afterbegin`,
       `<meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">`
+            <meta name="viewport" content="width=device-width, initial-scale=1">`
     );
 
     richContentElement
       .querySelectorAll(`style`)
-      .forEach(async (styleElement) => {
+      .forEach((styleElement) => {
         const cssString = styleElement.innerHTML;
 
-        styleElement.innerHTML = await getCssStringWithUpdatedUrls(
+        styleElement.innerHTML = getCssStringWithUpdatedUrls(
           cssString,
           (src) => imagesToDownload.add(src)
         );

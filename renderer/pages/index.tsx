@@ -3,53 +3,53 @@ import styles from "@/renderer/styles/Home.module.css";
 import { Card, Space, Alert, Form, Input, Button } from "antd";
 import React from "react";
 import axios from "axios";
-import { FilesUploadQueuesResponsePayload } from "@/renderer/pages/api/parser/files/getUploadQueues";
-import { ParserResponsePayload } from "@/renderer/pages/api/parser/parse";
-import { Nullable } from "@/renderer/utils/types";
-import { FileToCDNUpload } from "@/renderer/utils/getFilesUploadQueues";
+// import { FilesUploadQueuesResponsePayload } from "@/renderer/pages/api/parser/files/getUploadQueues";
+import { Nullable } from "@/main/utils/types";
+import { FileToCDNUpload } from "@/main/utils/getFilesUploadQueues";
 import electron from "electron";
-import {IPCChannel} from "@/main/const";
-
-export type ParserFormFields = {
-  url: string;
-  containerSelector: string;
-};
+import { IPCChannel } from "@/main/const";
+import {
+  ParserResponsePayload,
+  ParserUserInput,
+} from "@/main/services/ParserService";
 
 const ipcRenderer = electron.ipcRenderer || false;
 
 export default function Home() {
-  const [form] = Form.useForm<ParserFormFields>();
+  const [form] = Form.useForm<ParserUserInput>();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [isEnd, setIsEnd] = React.useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = React.useState<Nullable<string>>(null);
-  const [successMessage, setSuccessMessage] = React.useState<Nullable<string>>(null);
+  const [errorMessage, setErrorMessage] =
+    React.useState<Nullable<string>>(null);
+  const [successMessage, setSuccessMessage] =
+    React.useState<Nullable<string>>(null);
   const [loadingButtonText, setLoadingButtonText] = React.useState<string>(``);
   const [resultFolderTimestamp, setResultFolderTimestamp] =
     React.useState<Nullable<string>>(null);
 
-  const fetchFilesUploadQueues =
-    async (): Promise<FilesUploadQueuesResponsePayload | void> => {
-      try {
-        const { data } = await axios.get<FilesUploadQueuesResponsePayload>(
-          `/api/parser/files/getUploadQueues`
-        );
-
-        return data;
-      } catch (err) {
-        if (axios.isAxiosError(err)) {
-          setErrorMessage(err.message);
-        } else {
-          console.log("unexpected err: ", err);
-          setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
-        }
-        setIsLoading(false);
-      }
-    };
+  // const fetchFilesUploadQueues =
+  //   async (): Promise<FilesUploadQueuesResponsePayload | void> => {
+  //     try {
+  //       const { data } = await axios.get<FilesUploadQueuesResponsePayload>(
+  //         `/api/parser/files/getUploadQueues`
+  //       );
+  //
+  //       return data;
+  //     } catch (err) {
+  //       if (axios.isAxiosError(err)) {
+  //         setErrorMessage(err.message);
+  //       } else {
+  //         console.log("unexpected err: ", err);
+  //         setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
+  //       }
+  //       setIsLoading(false);
+  //     }
+  //   };
 
   const fetchParseRichContent = async ({
     url,
     containerSelector,
-  }: ParserFormFields): Promise<ParserResponsePayload | void> => {
+  }: ParserUserInput): Promise<ParserResponsePayload | void> => {
     try {
       const { data } = await axios.get<ParserResponsePayload>(
         `/api/parser/parse?url=${url}&containerSelector=${containerSelector}`
@@ -85,21 +85,53 @@ export default function Home() {
     }
   };
 
-    React.useEffect(() => {
-        ipcRenderer.on(IPCChannel.Parse, (event, data) => {
-            console.log(event, data)
-        });
+  React.useEffect(() => {
+    if (ipcRenderer) {
+      ipcRenderer.on(IPCChannel.Parse, onParserDataReceive);
 
-        return () => {
-            ipcRenderer.removeAllListeners(IPCChannel.Parse);
-        };
-    }, [])
+      return () => {
+        ipcRenderer.removeAllListeners(IPCChannel.Parse);
+      };
+    }
+  }, []);
 
-  const onSubmit = async (formFields: ParserFormFields) => {
-      console.log(`onSubmit`);
-      ipcRenderer.send(IPCChannel.Parse, 'some data from ipcRenderer');
-      return;
+  const onParserDataReceive = (
+    event: Electron.IpcRendererEvent,
+    data: ParserResponsePayload
+  ) => {
+    console.log(event, data);
+    //
+    //
+    // const parserResponse = await fetchParseRichContent(formFields);
+    // if (!parserResponse) return;
+    //
+    // if (parserResponse.err) {
+    //   setErrorMessage(parserResponse.err);
+    //   setIsLoading(false);
+    //   return;
+    // }
+    //
+    // if (parserResponse && parserResponse.timestamp) {
+    //   setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
+    //   setResultFolderTimestamp(parserResponse.timestamp);
+    //
+    //   const res = await fetchFilesUploadQueues();
+    //
+    //   if (!res) return;
+    //
+    //   if (res.err) {
+    //     setErrorMessage(res.err);
+    //     return;
+    //   }
+    //
+    //   setLoadingButtonText(`Загружаю файлы на CDN...`);
+    //
+    //   for await (const filesToUpload of res.filesUploadQueues) {
+    //     await fetchUploadParsedFilesToCDN(filesToUpload);
+    //   }
+  };
 
+  const onSubmit = async (formFields: ParserUserInput) => {
     setErrorMessage(null);
     setSuccessMessage(null);
     setIsEnd(false);
@@ -107,41 +139,16 @@ export default function Home() {
     setResultFolderTimestamp(null);
     setLoadingButtonText(`Паршу вёрстку и изображения...`);
 
-    const parserResponse = await fetchParseRichContent(formFields);
-    if (!parserResponse) return;
+    if (ipcRenderer) {
+      ipcRenderer.send(IPCChannel.Parse, formFields);
+    }
 
-    if (parserResponse.err) {
-      setErrorMessage(parserResponse.err);
+    setTimeout(() => {
+      setIsEnd(true);
+      setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
       setIsLoading(false);
-      return;
-    }
-
-    if (parserResponse && parserResponse.timestamp) {
-      setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
-      setResultFolderTimestamp(parserResponse.timestamp);
-
-      const res = await fetchFilesUploadQueues();
-
-      if (!res) return;
-
-      if (res.err) {
-        setErrorMessage(res.err);
-        return;
-      }
-
-      setLoadingButtonText(`Загружаю файлы на CDN...`);
-
-      for await (const filesToUpload of res.filesUploadQueues) {
-        await fetchUploadParsedFilesToCDN(filesToUpload);
-      }
-
-      setTimeout(() => {
-        setIsEnd(true);
-        setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
-        setIsLoading(false);
-        setLoadingButtonText(``);
-      }, 5000);
-    }
+      setLoadingButtonText(``);
+    }, 5000);
   };
 
   return (
