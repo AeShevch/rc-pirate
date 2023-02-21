@@ -22,10 +22,15 @@ if (isProd) {
   });
 
   ipcMain.on(IPCChannel.Parse, async (event, userInput) => {
-    console.log(userInput);
-    const res = await parserService.parse(userInput);
-    console.log(`END  `, res);
-    return event.sender.send(IPCChannel.Parse, res);
+    try {
+      const res = await parserService.parse(userInput);
+      return event.sender.send(IPCChannel.Parse, res);
+    } catch (err) {
+      return event.sender.send(IPCChannel.Parse, {
+        timestamp: null,
+        err,
+      });
+    }
   });
 
   if (isProd) {

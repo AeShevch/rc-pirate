@@ -11,7 +11,6 @@ type GetPageParts = (
   richContentHtml: Nullable<string>;
 }>;
 
-// @ts-ignore WTF?!
 export const getPageParts: GetPageParts = async (page, containerSelector) => {
   await page.exposeFunction(
     "getCssStringWithUpdatedUrls",
@@ -20,13 +19,14 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
 
   return await page.evaluate((containerSelector) => {
     const richContentElement = document.querySelector(containerSelector);
-    const imagesToDownload = new Set<string>();
-    const cssToDownload = new Set<string>();
+    const imagesToDownload: string[] = [];
+    const cssToDownload: string[] = [];
 
     if (!richContentElement)
       return {
         richContentHtml: null,
-        imagesToDownload,
+        imagesToDownload: [],
+        cssToDownload: [],
       };
 
     richContentElement.insertAdjacentHTML(
@@ -37,13 +37,16 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
 
     richContentElement
       .querySelectorAll(`style`)
-      .forEach((styleElement) => {
+      .forEach(async (styleElement) => {
         const cssString = styleElement.innerHTML;
 
-        styleElement.innerHTML = getCssStringWithUpdatedUrls(
-          cssString,
-          (src) => imagesToDownload.add(src)
-        );
+        styleElement.innerHTML = await (
+          window as any
+        ).getCssStringWithUpdatedUrls(cssString, (src: string) => {
+          if (!imagesToDownload.includes(src)) {
+            imagesToDownload.push(src);
+          }
+        });
       });
 
     (
@@ -54,8 +57,10 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
       const fileName = linkElement.href
         .split(`/`)
         .at(-1)
-        ?.split("?")[0] as string;
-      cssToDownload.add(linkElement.href);
+        ?.split(`?`)[0] as string;
+      if (!cssToDownload.includes(linkElement.href)) {
+        cssToDownload.push(linkElement.href);
+      }
       linkElement.href = `./${fileName}`;
     });
 
@@ -70,14 +75,20 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
 
       if (originalSrc) {
         const fileName = originalSrc.split(`/`).at(-1);
-        imagesToDownload.add(imgElement.src);
+
+        if (!imagesToDownload.includes(originalSrc)) {
+          imagesToDownload.push(originalSrc);
+        }
 
         imgElement.src = `./images/${fileName}`;
       }
 
       if (originalDataSrc) {
         const fileName = originalDataSrc.split(`/`).at(-1);
-        imagesToDownload.add(originalDataSrc);
+
+        if (!imagesToDownload.includes(originalDataSrc)) {
+          imagesToDownload.push(originalDataSrc);
+        }
 
         imgElement.dataset.src = `./images/${fileName}`;
       }
@@ -90,7 +101,9 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
 
             const fileName = originalSrcFromSrcSet.split(`/`).at(-1);
 
-            imagesToDownload.add(originalSrcFromSrcSet);
+            if (!imagesToDownload.includes(originalSrcFromSrcSet)) {
+              imagesToDownload.push(originalSrcFromSrcSet);
+            }
 
             return `./images/${fileName} ${sizeValue}`;
           })
@@ -100,8 +113,8 @@ export const getPageParts: GetPageParts = async (page, containerSelector) => {
 
     return {
       richContentHtml: richContentElement.innerHTML,
-      imagesToDownload: Array.from(imagesToDownload),
-      cssToDownload: Array.from(cssToDownload),
+      imagesToDownload,
+      cssToDownload,
     };
   }, containerSelector);
 };
