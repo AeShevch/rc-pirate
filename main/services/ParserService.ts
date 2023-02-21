@@ -22,7 +22,6 @@ export class ParserService {
     url,
     containerSelector,
   }: ParserUserInput): Promise<ParserResponsePayload | void> {
-    console.log(`start`);
     const timestamp = Date.now().toString();
     const resultHTMLDir = path.join(`/tmp`, `/results/${timestamp}`, `html`);
     const indexHtmlFileName = `index.html`;
@@ -31,12 +30,14 @@ export class ParserService {
     const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
 
+    await page.exposeFunction(
+      "getCssStringWithUpdatedUrls",
+      getCssStringWithUpdatedUrls
+    );
+
     try {
-      console.log(`try`);
       const res = await page.goto(url, { timeout: 9999999 });
-      console.log(res);
     } catch (err) {
-      console.log(`await page.goto fail`);
       console.log(err);
 
       await browser.close();
@@ -48,10 +49,8 @@ export class ParserService {
     }
 
     try {
-      console.log(`waitForSelector`);
       await page.waitForSelector(containerSelector);
     } catch (err) {
-      console.log(`waitForSelector fail`);
       console.log(err);
       await browser.close();
 
@@ -60,12 +59,6 @@ export class ParserService {
         err: `Возвращаемся! Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
       };
     }
-
-    console.log(`waitForSelector end`);
-    await page.exposeFunction(
-      "getCssStringWithUpdatedUrls",
-      getCssStringWithUpdatedUrls
-    );
 
     const { richContentHtml, imagesToDownload, cssToDownload } =
       await page.evaluate((containerSelector) => {
@@ -89,9 +82,9 @@ export class ParserService {
         richContentElement.querySelectorAll(`style`).forEach((styleElement) => {
           const cssString = styleElement.innerHTML;
 
-          styleElement.innerHTML = getCssStringWithUpdatedUrls(
+          styleElement.innerHTML = (window as any).getCssStringWithUpdatedUrls(
             cssString,
-            (src) => {
+            (src: string) => {
               if (!imagesToDownload.includes(src)) {
                 imagesToDownload.push(src);
               }
@@ -168,12 +161,6 @@ export class ParserService {
           cssToDownload,
         };
       }, containerSelector);
-
-    console.log(`richContentHtml`, {
-      richContentHtml,
-      imagesToDownload,
-      cssToDownload,
-    });
 
     await browser.close();
 

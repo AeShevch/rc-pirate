@@ -1,0 +1,6 @@
+{
+  "presets": [
+    "nextron/babel",
+    "@babel/preset-env"
+  ]
+}
