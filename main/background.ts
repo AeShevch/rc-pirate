@@ -24,6 +24,7 @@ if (isProd) {
   ipcMain.on(IPCChannel.Parse, async (event, userInput) => {
     try {
       const res = await parserService.parse(userInput);
+
       return event.sender.send(IPCChannel.Parse, res);
     } catch (err) {
       return event.sender.send(IPCChannel.Parse, {
