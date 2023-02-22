@@ -71,9 +71,9 @@ if (isProd) {
       try {
         await cdnService.upload(files);
 
-        return event.sender.send(IPCChannel.GetUploadQueues);
+        return event.sender.send(IPCChannel.UploadToCDN);
       } catch (err) {
-        return event.sender.send(IPCChannel.GetUploadQueues, { err });
+        return event.sender.send(IPCChannel.UploadToCDN, { err });
       }
     }
   );

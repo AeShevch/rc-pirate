@@ -97,7 +97,7 @@ export default function Home() {
           resolve();
         });
       } else {
-        reject(`ipcRenderer not defined!`);
+        reject(`ipcRenderer is not defined!`);
       }
     });
 
@@ -122,7 +122,8 @@ export default function Home() {
   const onUploadQueuesReceive = async (
     evt: Electron.IpcRendererEvent,
     parserData: FilesUploadQueuesResponsePayload
-  ) => {иif (parserData.err) {
+  ) => {
+    if (parserData && parserData.err) {
       resetState();
       setErrorMessage(parserData.err);
       return;

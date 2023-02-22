@@ -40,11 +40,11 @@ export class ParserService {
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
 
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch();
     const page = await browser.newPage();
 
     try {
-      const res = await page.goto(url, { timeout: 9999999 });
+      await page.goto(url, { timeout: 9999999 });
     } catch (err) {
       console.log(err);
 
