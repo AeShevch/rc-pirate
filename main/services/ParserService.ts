@@ -6,9 +6,22 @@ import { getCssStringWithUpdatedUrls } from "../utils/getCssStringWithUpdatedUrl
 import { downloadFile } from "../utils/downloadFile";
 import { zipDirectory } from "../utils/zipDirectory";
 import { Nullable } from "../utils/types";
+import walk from "walk";
+
+const ONE_FILE_QUEUE_LENGTH = 10;
+
+export type FileToCDNUpload = {
+  localFilePath: string;
+  resultFolder?: string;
+};
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
+  err: Nullable<string>;
+};
+
+export type FilesUploadQueuesResponsePayload = {
+  filesUploadQueues: FileToCDNUpload[][];
   err: Nullable<string>;
 };
 
@@ -120,5 +133,40 @@ export class ParserService {
       timestamp,
       err: null,
     };
+  }
+
+  public async prepareCdnUploadQueues(
+    localFolderDir: string
+  ): Promise<FileToCDNUpload[][]> {
+    return new Promise((resolve) => {
+      const walker = walk.walk(localFolderDir);
+      const filesUploadQueues: FileToCDNUpload[][] = [];
+      let index = 0;
+
+      walker.on("file", (root, fileStats, next) => {
+        const localFilePath = path.join(root, fileStats.name);
+        const filesQueueIndex = Math.floor(index / ONE_FILE_QUEUE_LENGTH);
+
+        if (!filesUploadQueues[filesQueueIndex]) {
+          filesUploadQueues[filesQueueIndex] = [];
+        }
+
+        filesUploadQueues[filesQueueIndex].push({
+          localFilePath,
+          resultFolder: root.replace(localFolderDir, ``),
+        });
+
+        index++;
+        next();
+      });
+
+      walker.on("errors", (root, nodeStatsArray, next) => {
+        next();
+      });
+
+      walker.on("end", () => {
+        resolve(filesUploadQueues);
+      });
+    });
   }
 }

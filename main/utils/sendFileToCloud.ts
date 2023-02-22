@@ -1,7 +1,11 @@
-import { FileToCDNUpload } from "./getFilesUploadQueues";
+import * as dotenv from "dotenv";
+
+dotenv.config();
+console.log(process.env);
 
 const _minio = require("minio");
 import Minio from "minio";
+import { FileToCDNUpload } from "@/main/services/ParserService";
 
 const BUCKET_NAME = "tf-bitrix-upload";
 

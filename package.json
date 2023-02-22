@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@babel/preset-env": "^7.20.2",
+    "dotenv": "^16.0.3",
     "electron-serve": "^1.1.0",
     "electron-store": "^8.1.0",
     "next": "^12.3.4",
