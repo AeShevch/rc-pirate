@@ -5,10 +5,11 @@ import React from "react";
 import axios from "axios";
 // import { FilesUploadQueuesResponsePayload } from "@/renderer/pages/api/parser/files/getUploadQueues";
 import { Nullable } from "@/main/utils/types";
-import { FileToCDNUpload } from "@/main/utils/getFilesUploadQueues";
 import electron from "electron";
 import { IPCChannel } from "@/main/const";
 import {
+  FilesUploadQueuesResponsePayload,
+  FileToCDNUpload,
   ParserResponsePayload,
   ParserUserInput,
 } from "@/main/services/ParserService";
@@ -27,24 +28,13 @@ export default function Home() {
   const [resultFolderTimestamp, setResultFolderTimestamp] =
     React.useState<Nullable<string>>(null);
 
-  // const fetchFilesUploadQueues =
-  //   async (): Promise<FilesUploadQueuesResponsePayload | void> => {
-  //     try {
-  //       const { data } = await axios.get<FilesUploadQueuesResponsePayload>(
-  //         `/api/parser/files/getUploadQueues`
-  //       );
-  //
-  //       return data;
-  //     } catch (err) {
-  //       if (axios.isAxiosError(err)) {
-  //         setErrorMessage(err.message);
-  //       } else {
-  //         console.log("unexpected err: ", err);
-  //         setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
-  //       }
-  //       setIsLoading(false);
-  //     }
-  //   };
+  const resetState = (): void => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsEnd(false);
+    setIsLoading(false);
+    setResultFolderTimestamp(null);
+  };
 
   const fetchParseRichContent = async ({
     url,
@@ -88,47 +78,68 @@ export default function Home() {
   React.useEffect(() => {
     if (ipcRenderer) {
       ipcRenderer.on(IPCChannel.Parse, onParserDataReceive);
+      ipcRenderer.on(IPCChannel.GetUploadQueues, onUploadQueuesReceive);
 
       return () => {
         ipcRenderer.removeAllListeners(IPCChannel.Parse);
+        ipcRenderer.removeAllListeners(IPCChannel.GetUploadQueues);
       };
     }
   }, []);
 
+  const uploadToCDN = async (links: FileToCDNUpload[]): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
+      if (ipcRenderer) {
+        ipcRenderer.send(IPCChannel.UploadToCDN, links);
+
+        ipcRenderer.on(IPCChannel.UploadToCDN, () => {
+          ipcRenderer.removeAllListeners(IPCChannel.UploadToCDN);
+          resolve();
+        });
+      } else {
+        reject(`ipcRenderer not defined!`);
+      }
+    });
+
   const onParserDataReceive = (
-    event: Electron.IpcRendererEvent,
-    data: ParserResponsePayload
+    evt: Electron.IpcRendererEvent,
+    parserData: ParserResponsePayload
   ) => {
-    console.log(event, data);
-    //
-    //
-    // const parserResponse = await fetchParseRichContent(formFields);
-    // if (!parserResponse) return;
-    //
-    // if (parserResponse.err) {
-    //   setErrorMessage(parserResponse.err);
-    //   setIsLoading(false);
-    //   return;
-    // }
-    //
-    // if (parserResponse && parserResponse.timestamp) {
-    //   setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
-    //   setResultFolderTimestamp(parserResponse.timestamp);
-    //
-    //   const res = await fetchFilesUploadQueues();
-    //
-    //   if (!res) return;
-    //
-    //   if (res.err) {
-    //     setErrorMessage(res.err);
-    //     return;
-    //   }
-    //
-    //   setLoadingButtonText(`Загружаю файлы на CDN...`);
-    //
-    //   for await (const filesToUpload of res.filesUploadQueues) {
-    //     await fetchUploadParsedFilesToCDN(filesToUpload);
-    //   }
+    if (parserData.err) {
+      resetState();
+      setErrorMessage(parserData.err);
+      return;
+    }
+
+    setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
+    setResultFolderTimestamp(parserData.timestamp);
+
+    if (ipcRenderer) {
+      ipcRenderer.send(IPCChannel.GetUploadQueues);
+    }
+  };
+
+  const onUploadQueuesReceive = async (
+    evt: Electron.IpcRendererEvent,
+    parserData: FilesUploadQueuesResponsePayload
+  ) => {иif (parserData.err) {
+      resetState();
+      setErrorMessage(parserData.err);
+      return;
+    }
+
+    setLoadingButtonText(`Загружаю файлы на CDN...`);
+
+    for await (const filesToUpload of parserData.filesUploadQueues) {
+      await uploadToCDN(filesToUpload);
+    }
+
+    setTimeout(() => {
+      setIsEnd(true);
+      setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
+      setIsLoading(false);
+      setLoadingButtonText(``);
+    }, 5000);
   };
 
   const onSubmit = async (formFields: ParserUserInput) => {
@@ -142,13 +153,6 @@ export default function Home() {
     if (ipcRenderer) {
       ipcRenderer.send(IPCChannel.Parse, formFields);
     }
-
-    setTimeout(() => {
-      setIsEnd(true);
-      setSuccessMessage(`🦜 Абордаж успешен! Что дальше, капитан?`);
-      setIsLoading(false);
-      setLoadingButtonText(``);
-    }, 5000);
   };
 
   return (
