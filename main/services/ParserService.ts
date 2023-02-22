@@ -7,6 +7,7 @@ import { downloadFile } from "../utils/downloadFile";
 import { zipDirectory } from "../utils/zipDirectory";
 import { Nullable } from "../utils/types";
 import walk from "walk";
+import { app } from "electron";
 
 const ONE_FILE_QUEUE_LENGTH = 10;
 
@@ -17,6 +18,7 @@ export type FileToCDNUpload = {
 
 export type ParserResponsePayload = {
   timestamp: Nullable<string>;
+  zipFileName: Nullable<string>;
   err: Nullable<string>;
 };
 
@@ -36,9 +38,11 @@ export class ParserService {
     containerSelector,
   }: ParserUserInput): Promise<ParserResponsePayload | void> {
     const timestamp = Date.now().toString();
-    const resultHTMLDir = path.join(`/tmp`, `/results/${timestamp}`, `html`);
+    const resultDir = path.join(app.getAppPath(), `/tmp`, `/results/`);
+    const resultHTMLDir = path.join(resultDir, `${timestamp}`, `html`);
     const indexHtmlFileName = `index.html`;
     const fullIndexHtmlPath = path.join(resultHTMLDir, indexHtmlFileName);
+    const zipFileName = url.replaceAll(`.`, `_`).split(`/`).at(-1) as string;
 
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -52,6 +56,7 @@ export class ParserService {
 
       return {
         timestamp: null,
+        zipFileName: null,
         err: `Карамба! Страница не найдена или слишком долго открывается. Убедитесь в корректности вводных или попробуйте попробовать ещё раз.`,
       };
     }
@@ -64,6 +69,7 @@ export class ParserService {
 
       return {
         timestamp: null,
+        zipFileName: null,
         err: `Возвращаемся! Рич контент в контейнере ${containerSelector} не найден на странице ${url} `,
       };
     }
@@ -76,13 +82,14 @@ export class ParserService {
     if (!richContentHtml) {
       return {
         timestamp: null,
+        zipFileName: null,
         err: `Якорь мне в код! Почему-то html пустой, разраба на мостик!`,
       };
     }
 
-    fs.mkdirSync(`/tmp/results`, { recursive: true });
+    fs.mkdirSync(resultDir, { recursive: true });
 
-    fs.rmSync(`/tmp/results`, { recursive: true });
+    fs.rmSync(resultDir, { recursive: true });
 
     try {
       fs.mkdirSync(resultHTMLDir, { recursive: true });
@@ -127,10 +134,11 @@ export class ParserService {
 
     fs.writeFileSync(fullIndexHtmlPath, richContentHtml);
 
-    await zipDirectory(resultHTMLDir, `${resultHTMLDir}.zip`);
+    await zipDirectory(resultHTMLDir, `${path.join(resultDir, timestamp, zipFileName)}.zip`);
 
     return {
       timestamp,
+      zipFileName,
       err: null,
     };
   }

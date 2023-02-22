@@ -9,6 +9,7 @@ import {
   ParserUserInput,
 } from "./services/ParserService";
 import { CDNService } from "./services/CDNService";
+import * as path from "path";
 
 const isProd = process.env.NODE_ENV === "production";
 const parserService = new ParserService();
@@ -49,7 +50,7 @@ if (isProd) {
     async (event: Electron.IpcMainEvent) => {
       try {
         const filesUploadQueues = await parserService.prepareCdnUploadQueues(
-          `/tmp/results`
+          path.join(app.getAppPath(), `/tmp/results`)
         );
 
         return event.sender.send(IPCChannel.GetUploadQueues, {

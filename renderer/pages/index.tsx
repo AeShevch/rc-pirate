@@ -27,6 +27,8 @@ export default function Home() {
   const [loadingButtonText, setLoadingButtonText] = React.useState<string>(``);
   const [resultFolderTimestamp, setResultFolderTimestamp] =
     React.useState<Nullable<string>>(null);
+  const [resultZipName, setResultZipName] =
+    React.useState<Nullable<string>>(null);
 
   const resetState = (): void => {
     setErrorMessage(null);
@@ -34,45 +36,6 @@ export default function Home() {
     setIsEnd(false);
     setIsLoading(false);
     setResultFolderTimestamp(null);
-  };
-
-  const fetchParseRichContent = async ({
-    url,
-    containerSelector,
-  }: ParserUserInput): Promise<ParserResponsePayload | void> => {
-    try {
-      const { data } = await axios.get<ParserResponsePayload>(
-        `/api/parser/parse?url=${url}&containerSelector=${containerSelector}`
-      );
-
-      return data;
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setErrorMessage(err.message);
-      } else {
-        console.log("unexpected err: ", err);
-        setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
-      }
-      setIsLoading(false);
-    }
-  };
-
-  const fetchUploadParsedFilesToCDN = async (
-    filesToUpload: FileToCDNUpload[]
-  ): Promise<void> => {
-    try {
-      await axios.get<void>(
-        `/api/parser/files/cdnUpload?files=${JSON.stringify(filesToUpload)}`
-      );
-    } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setErrorMessage(err.message);
-      } else {
-        console.log("unexpected err: ", err);
-        setErrorMessage(`🦜 Неожиданная ошибка! Позвать разраба на мостик!`);
-      }
-      setIsLoading(false);
-    }
   };
 
   React.useEffect(() => {
@@ -113,6 +76,7 @@ export default function Home() {
 
     setLoadingButtonText(`Подготавливаю файлы для загрузки на CDN...`);
     setResultFolderTimestamp(parserData.timestamp);
+    setResultZipName(parserData.zipFileName);
 
     if (ipcRenderer) {
       ipcRenderer.send(IPCChannel.GetUploadQueues);
@@ -236,7 +200,7 @@ export default function Home() {
                       </a>
                       <a
                         rel="noreferrer"
-                        href={`https://cdn.iport.ru/rc-pirate/${resultFolderTimestamp}/html.zip`}
+                        href={`https://cdn.iport.ru/rc-pirate/${resultFolderTimestamp}/${resultZipName}.zip`}
                         style={{
                           color: `#1677ff`,
                           borderBottom: `1px dashed currentColor`,
